@@ -13,7 +13,7 @@ with st.sidebar:
     st.info("Make sure you enabled the 'Generative Language API' in Google Cloud.")
 
 # 3. File Uploader
-uploaded_file = st.file_uploader("Step 1: Upload your CSV file", type=["csv"])
+uploaded_file = st.file_uploader("Step 1: Upload your data file")
 
 if uploaded_file is not None:
     # Read the data
