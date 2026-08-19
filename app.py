@@ -2,59 +2,55 @@ import streamlit as st
 import pandas as pd
 import google.generativeai as genai
 
-# 1. Setup Page
-st.set_page_config(page_title="AI Data Analyst", layout="wide")
-st.title("📊 AI Data Analyst (Final Version)")
+# Setup
+st.set_page_config(page_title="AI Data Analyst (Multi-Format)", layout="wide")
+st.title("📊 AI Data Analyst")
+st.subheader("I can read CSV and Excel files!")
 
-# 2. Sidebar for API Key
+# Sidebar for API Key
 with st.sidebar:
-    st.header("Setup")
-    api_key = st.text_input("Paste your Google API Key (AQ...):", type="password")
-    st.info("Make sure you enabled the 'Generative Language API' in Google Cloud.")
+    st.header("Settings")
+    api_key = st.text_input("Paste your Google API Key:", type="password")
 
-# 3. File Uploader
-uploaded_file = st.file_uploader("Step 1: Upload your data file")
+# 1. Flexible File Uploader (Accepts CSV and Excel)
+uploaded_file = st.file_uploader("Upload your data file (CSV or Excel)", type=["csv", "xlsx", "xls"])
 
 if uploaded_file is not None:
-    # Read the data
-    df = pd.read_csv(uploaded_file)
-    st.write("### Data Preview:")
-    st.dataframe(df.head()) 
-
-    # 4. Question Input
-    user_question = st.text_input("Step 2: Ask a question about your data")
-
-    if st.button("Analyze"):
-        if not api_key:
-            st.error("Please enter your API Key in the sidebar!")
+    try:
+        # 2. Check the file extension and read accordingly
+        if uploaded_file.name.endswith('.csv'):
+            df = pd.read_csv(uploaded_file)
         else:
-            try:
-                # Configure AI with the 'rest' transport (best for new AQ keys)
-                genai.configure(api_key=api_key, transport='rest')
-                
-                # We use Gemini 1.5 Flash - it's fast and reliable
-                model = genai.GenerativeModel('gemini-1.5-flash')
+            # This handles .xlsx and .xls files
+            df = pd.read_excel(uploaded_file)
 
-                # Prepare the data summary for the AI
-                data_summary = f"The dataset has these columns: {list(df.columns)}. Here is a sample:\n{df.head().to_string()}"
-                
-                prompt = f"""
-                You are a professional data analyst. 
-                Data Details: {data_summary}
-                User Question: '{user_question}'
-                
-                Answer the question clearly based on the data provided.
-                """
+        st.write("### Data Preview:", df.head())
+        user_question = st.text_input("Ask a question about this data:")
 
-                with st.spinner("Analyzing..."):
-                    response = model.generate_content(prompt)
-                    st.success(response.text)
+        if st.button("Analyze"):
+            if not api_key:
+                st.error("Please enter your API Key in the sidebar!")
+            else:
+                try:
+                    # 3. Configure AI (Using transport='rest' for stability)
+                    genai.configure(api_key=api_key, transport='rest')
+                    
+                    # Using Gemini 1.5 Flash
+                    model = genai.GenerativeModel('gemini-1.5-flash')
 
-            except Exception as e:
-                # If there's an error, show a helpful message
-                if "404" in str(e):
-                    st.error("Error 404: The AI model wasn't found. Make sure you clicked 'ENABLE' on the Gemini API page in Google Cloud.")
-                else:
-                    st.error(f"Something went wrong: {e}")
+                    # Create data context for the AI
+                    data_summary = f"Columns: {list(df.columns)}. Data Sample:\n{df.head().to_string()}"
+                    prompt = f"You are a data analyst. Data: {data_summary}\n\nQuestion: {user_question}"
+
+                    with st.spinner("Analyzing your data..."):
+                        response = model.generate_content(prompt)
+                        st.success(response.text)
+
+                except Exception as e:
+                    st.error(f"AI Error: {e}")
+    
+    except Exception as e:
+        st.error(f"File Loading Error: {e}. Make sure the file isn't corrupted.")
+
 else:
-    st.info("Please upload a CSV file to get started.")
+    st.info("Waiting for a CSV or Excel file...")
